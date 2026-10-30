@@ -35,6 +35,7 @@ import static java.util.Optional.empty;
 @Log4j2
 public class TreeBuilder{
 	private static final EnumSet<DirectionCompat> ALL_DIRECTIONS = EnumSet.allOf(DirectionCompat.class);
+	private static final Predicate<IBlock> ALLOW_ALL_ADJACENT = block -> true;
 	
 	private final FallingTreeCommon<?> mod;
 	
@@ -116,7 +117,7 @@ public class TreeBuilder{
 		var base = mod.getConfiguration().getTrees().getAllAllowedAdjacentBlockBlocks(mod);
 		
 		if(allowedList.isEmpty()){
-			return block -> true;
+			return ALLOW_ALL_ADJACENT;
 		}
 		return switch(mod.getConfiguration().getTrees().getAdjacentStopMode()){
 			case STOP_ALL -> block -> {
@@ -196,6 +197,10 @@ public class TreeBuilder{
 	}
 	
 	private static boolean checkAdjacent(@NonNull Predicate<IBlock> adjacentPredicate, @NonNull ILevel level, IBlockPos pos){
+		if(adjacentPredicate == ALLOW_ALL_ADJACENT){
+			// Nothing to check, skip the 6 block reads
+			return true;
+		}
 		return EnumSet.allOf(DirectionCompat.class).stream()
 				.map(pos::relative)
 				.map(level::getBlockState)
