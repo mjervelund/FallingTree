@@ -29,10 +29,10 @@ public class LeafBreakingHandler{
 			}
 			
 			var level = leafBreakingSchedule.getLevel();
-			var chunk = level.getChunk(leafBreakingSchedule.getBlockPos());
-			var chunkPos = chunk.getPos();
+			var blockPos = leafBreakingSchedule.getBlockPos();
 			
-			if(level.hasChunk(chunkPos.getX(), chunkPos.getZ())){
+			// Check before touching the chunk: getChunk would load it if it isn't loaded
+			if(level.hasChunk(blockPos.getX() >> 4, blockPos.getZ() >> 4)){
 				var state = level.getBlockState(leafBreakingSchedule.getBlockPos());
 				state.tick(level, leafBreakingSchedule.getBlockPos(), level.getRandom());
 				if(state.isRandomlyTicking()){
@@ -59,9 +59,7 @@ public class LeafBreakingHandler{
 		
 		for(var direction : directions){
 			var neighborPos = eventPos.relative(direction);
-			var chunk = level.getChunk(neighborPos);
-			var chunkPos = chunk.getPos();
-			if(level.hasChunk(chunkPos.getX(), chunkPos.getZ())){
+			if(level.hasChunk(neighborPos.getX() >> 4, neighborPos.getZ() >> 4)){
 				var neighborState = level.getBlockState(neighborPos);
 				if(mod.isLeafBlock(neighborState.getBlock())){
 					addSchedule(new LeafBreakingSchedule(level, neighborPos, 4));

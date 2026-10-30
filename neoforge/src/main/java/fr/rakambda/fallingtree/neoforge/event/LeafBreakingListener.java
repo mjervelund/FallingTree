@@ -7,6 +7,7 @@ import fr.rakambda.fallingtree.neoforge.common.wrapper.ServerLevelWrapper;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.Blocks;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
@@ -26,7 +27,8 @@ public class LeafBreakingListener{
 	
 	@SubscribeEvent
 	public void onNeighborNotifyEvent(BlockEvent.NeighborNotifyEvent event){
-		if(event.getLevel() instanceof ServerLevel level){
+		// Runs for every block update on the server, so bail out before allocating anything
+		if(event.getLevel() instanceof ServerLevel level && event.getState().is(Blocks.AIR) && mod.getConfiguration().getTrees().isLeavesBreaking()){
 			var eventState = event.getState();
 			var eventPos = event.getPos();
 			
