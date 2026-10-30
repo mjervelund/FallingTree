@@ -34,6 +34,8 @@ import static java.util.Optional.empty;
 @RequiredArgsConstructor
 @Log4j2
 public class TreeBuilder{
+	private static final int MAX_ANALYZED_POSITIONS_PER_TREE_PART = 64;
+
 	private static final EnumSet<DirectionCompat> ALL_DIRECTIONS = EnumSet.allOf(DirectionCompat.class);
 	
 	private final FallingTreeCommon<?> mod;
@@ -47,11 +49,18 @@ public class TreeBuilder{
 		
 		var maxScanSize = mod.getConfiguration().getTrees().getMaxScanSize();
 		var toAnalyzePos = new PriorityQueue<ToAnalyzePos>();
+		// Mirrors toAnalyzePos for O(1) lookups; PriorityQueue.contains is a linear scan
+		var queuedPos = new HashSet<ToAnalyzePos>();
 		var analyzedPos = new HashSet<ToAnalyzePos>();
+		// Leaves don't count towards the tree size, so also bound the total number of scanned positions.
+		// A player can otherwise surround a log structure with leaves and make one break scan hundreds of thousands of blocks.
+		var maxAnalyzedPositions = (long) maxScanSize * MAX_ANALYZED_POSITIONS_PER_TREE_PART;
 		var tree = new MutableTree(level, originPos);
 		var detectionMode = getDetectionMode(level, originPos);
 		var firstPositionFetcher = getFirstPositionFetcher(detectionMode);
-		toAnalyzePos.add(new ToAnalyzePos(firstPositionFetcher, originPos, originBlock, originPos, originBlock, originState, originEntity, TreePartType.LOG_START, 0, 0));
+		var firstPos = new ToAnalyzePos(firstPositionFetcher, originPos, originBlock, originPos, originBlock, originState, originEntity, TreePartType.LOG_START, 0, 0);
+		toAnalyzePos.add(firstPos);
+		queuedPos.add(firstPos);
 		
 		var boundingBoxSearch = getBoundingBoxSearch(originPos);
 		var adjacentPredicate = getAdjacentPredicate();
@@ -61,12 +70,13 @@ public class TreeBuilder{
 			
 			while(!toAnalyzePos.isEmpty()){
 				var analyzingPos = toAnalyzePos.remove();
+				queuedPos.remove(analyzingPos);
 				if(analyzingPos.toTreePart().treePartType().isIncludeInTree()){
 					tree.addPart(analyzingPos.toTreePart());
 				}
 				analyzedPos.add(analyzingPos);
 				
-				if(tree.getSize() > maxScanSize){
+				if(tree.getSize() > maxScanSize || analyzedPos.size() > maxAnalyzedPositions){
 					log.info("Tree at {} reached max scan size of {}", tree.getHitPos(), maxScanSize);
 					throw new TreeTooBigException();
 				}
@@ -78,8 +88,9 @@ public class TreeBuilder{
 				var nextPositions = filterPotentialPos(boundingBoxSearch, adjacentPredicate, level, originPos, originBlock, analyzingPos, potentialPositions, analyzedPos);
 				
 				nextPositions.removeAll(analyzedPos);
-				nextPositions.removeAll(toAnalyzePos);
+				nextPositions.removeAll(queuedPos);
 				toAnalyzePos.addAll(nextPositions);
+				queuedPos.addAll(nextPositions);
 			}
 			
 			postProcess(tree);
