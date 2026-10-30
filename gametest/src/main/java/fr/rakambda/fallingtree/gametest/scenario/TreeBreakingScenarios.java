@@ -10,6 +10,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import org.jspecify.annotations.NonNull;
+import static fr.rakambda.fallingtree.gametest.GameTestUtils.STRUCTURE_SIZE;
 import static fr.rakambda.fallingtree.gametest.GameTestUtils.TREE_BASE;
 import static fr.rakambda.fallingtree.gametest.GameTestUtils.TREE_HEIGHT;
 import static fr.rakambda.fallingtree.gametest.GameTestUtils.assertColumn;
@@ -18,6 +19,7 @@ import static fr.rakambda.fallingtree.gametest.GameTestUtils.assertDropped;
 import static fr.rakambda.fallingtree.gametest.GameTestUtils.assertOnlyBottomLogBroken;
 import static fr.rakambda.fallingtree.gametest.GameTestUtils.assertTrunkCut;
 import static fr.rakambda.fallingtree.gametest.GameTestUtils.createLumberjack;
+import static fr.rakambda.fallingtree.gametest.GameTestUtils.leafState;
 import static fr.rakambda.fallingtree.gametest.GameTestUtils.placeDefaultTree;
 import static fr.rakambda.fallingtree.gametest.GameTestUtils.placeFloor;
 import static fr.rakambda.fallingtree.gametest.GameTestUtils.placeLeafCap;
@@ -208,6 +210,44 @@ public final class TreeBreakingScenarios{
 		playerBreak(helper, player, TREE_BASE);
 
 		helper.succeedWhen(() -> assertOnlyBottomLogBroken(helper));
+	}
+	
+	/**
+	 * Leaves don't count towards the tree size, so the scan is also bounded by 64 positions per {@code maxScanSize}: here 320, with about 440 leaves.
+	 */
+	@GameTestCase
+	public static void leafScanBoundExceeded(@NonNull GameTestHelper helper, @NonNull FallingTreeCommon<?> mod){
+		TestConfiguration.reset(mod, config -> config.getTrees().setMaxScanSize(TREE_HEIGHT));
+		placeTreeBuriedInLeaves(helper);
+		var player = createLumberjack(helper);
+		playerBreak(helper, player, TREE_BASE);
+		
+		helper.succeedWhen(() -> assertOnlyBottomLogBroken(helper));
+	}
+	
+	/**
+	 * Same tree as {@link #leafScanBoundExceeded}, with a bound of 640 positions.
+	 */
+	@GameTestCase
+	public static void leafScanBoundNotReached(@NonNull GameTestHelper helper, @NonNull FallingTreeCommon<?> mod){
+		TestConfiguration.reset(mod, config -> config.getTrees().setMaxScanSize(2 * TREE_HEIGHT));
+		placeTreeBuriedInLeaves(helper);
+		var player = createLumberjack(helper);
+		playerBreak(helper, player, TREE_BASE);
+		
+		helper.succeedWhen(() -> assertTrunkCut(helper));
+	}
+	
+	private static void placeTreeBuriedInLeaves(@NonNull GameTestHelper helper){
+		placeFloor(helper);
+		for(int x = 0; x < STRUCTURE_SIZE; x++){
+			for(int y = 1; y < STRUCTURE_SIZE; y++){
+				for(int z = 0; z < STRUCTURE_SIZE; z++){
+					helper.setBlock(x, y, z, leafState(Blocks.OAK_LEAVES, true));
+				}
+			}
+		}
+		placeTrunk(helper, TREE_BASE, TREE_HEIGHT, Blocks.OAK_LOG);
 	}
 
 	@GameTestCase
