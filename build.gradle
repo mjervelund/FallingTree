@@ -29,10 +29,6 @@ allprojects {
 
         sourceCompatibility = JavaVersion.VERSION_25
         targetCompatibility = JavaVersion.VERSION_25
-
-        javaToolchains {
-            version = JavaLanguageVersion.of(25)
-        }
     }
 
     dependencies {
